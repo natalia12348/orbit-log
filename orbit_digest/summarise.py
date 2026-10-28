@@ -17,16 +17,44 @@ JARGON = re.compile(
 )
 
 WHY = {
-    ("space", "robotics"): "Relevant to robots that must work far from Earth, where remote control and repair are limited.",
-    ("space", "ai"): "Shows how AI can help spacecraft and rovers decide for themselves when Earth is too far away to help.",
-    ("robotics", "ai"): "Shows how learning methods are making robots more capable, a core skill area for robotics roles.",
-    ("space", "automation"): "Shows how automation keeps space systems running safely with fewer people in the loop.",
-    ("space",): "Gives context on the space industry and where autonomy and robotics are needed next.",
-    ("robotics",): "Useful background on how robots sense, plan and act in the real world.",
-    ("ai",): "Useful background on where AI methods are heading and what they can and cannot do.",
-    ("automation",): "Shows practical ways to automate monitoring, diagnosis and decision making.",
+    ("space", "robotics"): (
+        "Relevant to robots that must work far from Earth, where remote control and repair are limited.",
+        "Ważne dla robotów, które muszą działać daleko od Ziemi, gdzie zdalne sterowanie i naprawy są ograniczone.",
+    ),
+    ("space", "ai"): (
+        "Shows how AI can help spacecraft and rovers decide for themselves when Earth is too far away to help.",
+        "Pokazuje, jak AI może pomóc statkom kosmicznym i łazikom decydować samodzielnie, gdy Ziemia jest za daleko, by pomóc.",
+    ),
+    ("robotics", "ai"): (
+        "Shows how learning methods are making robots more capable, a core skill area for robotics roles.",
+        "Pokazuje, jak metody uczenia sprawiają, że roboty są coraz zdolniejsze. To kluczowy obszar w pracy w robotyce.",
+    ),
+    ("space", "automation"): (
+        "Shows how automation keeps space systems running safely with fewer people in the loop.",
+        "Pokazuje, jak automatyzacja pozwala bezpiecznie utrzymywać systemy kosmiczne przy mniejszym udziale ludzi.",
+    ),
+    ("space",): (
+        "Gives context on the space industry and where autonomy and robotics are needed next.",
+        "Daje kontekst o branży kosmicznej i o tym, gdzie potrzebna będzie autonomia i robotyka.",
+    ),
+    ("robotics",): (
+        "Useful background on how robots sense, plan and act in the real world.",
+        "Przydatne tło o tym, jak roboty postrzegają, planują i działają w prawdziwym świecie.",
+    ),
+    ("ai",): (
+        "Useful background on where AI methods are heading and what they can and cannot do.",
+        "Przydatne tło o kierunku rozwoju metod AI oraz o tym, co potrafią, a czego nie.",
+    ),
+    ("automation",): (
+        "Shows practical ways to automate monitoring, diagnosis and decision making.",
+        "Pokazuje praktyczne sposoby automatyzacji monitoringu, diagnozowania i podejmowania decyzji.",
+    ),
 }
-DEFAULT_WHY = "Broad context for the space, robotics and AI field."
+DEFAULT_WHY = (
+    "Broad context for the space, robotics and AI field.",
+    "Ogólny kontekst dla dziedziny kosmosu, robotyki i AI.",
+)
+WHY_TO_PL = {en: pl for en, pl in [*WHY.values(), DEFAULT_WHY]}
 
 
 def split_sentences(text: str) -> list:
@@ -57,15 +85,19 @@ def extractive_summary(text: str, count: int = SUMMARY_SENTENCES) -> list:
     return [trim(sentences[i]) for _, i in best]
 
 
-def why_it_matters(topics: list) -> str:
+def why_pair(topics: list) -> tuple:
     key = tuple(sorted(t for t in topics if t in ("space", "robotics", "ai", "automation")))
-    for pair, text in WHY.items():
+    for pair, texts in WHY.items():
         if set(pair) <= set(key) and len(pair) == len(key):
-            return text
-    for pair, text in WHY.items():
+            return texts
+    for pair, texts in WHY.items():
         if set(pair) <= set(key):
-            return text
+            return texts
     return DEFAULT_WHY
+
+
+def why_it_matters(topics: list) -> str:
+    return why_pair(topics)[0]
 
 
 def paper_difficulty(text: str) -> str:

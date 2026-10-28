@@ -17,3 +17,4 @@ class Item:
     summary: list = field(default_factory=list)
     why: str = ""
     difficulty: str = ""
+    pl: dict = field(default_factory=dict)

@@ -28,7 +28,11 @@ h2::before{content:"// ";color:var(--muted)}
 .packet::before,.packet::after{content:"";position:absolute;width:10px;height:10px;border:solid var(--amber);opacity:.8}
 .packet::before{top:-1px;left:-1px;border-width:2px 0 0 2px}
 .packet::after{right:-1px;bottom:-1px;border-width:0 2px 2px 0}
-.tag{font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--amber)}
+.tag{display:flex;justify-content:space-between;gap:12px;font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--amber)}
+.tag em{font-style:normal;letter-spacing:.1em;color:var(--muted)}
+.packet[data-pl]{cursor:pointer}.packet[data-pl]:hover{border-color:#34436b}.packet[data-pl]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.packet .pl{display:none}.packet.show-pl .pl{display:block}.packet.show-pl .en{display:none}
+.note{margin:10px 0 0;font:11px var(--mono);color:var(--muted)}
 .packet h3{margin:2px 0 4px;font:600 18px/1.4 var(--sans)}
 .packet h3 a{color:#fff;text-decoration:none;background:linear-gradient(var(--amber),var(--amber)) 0 100%/0 1px no-repeat;transition:background-size .2s}
 .packet h3 a:hover{background-size:100% 1px}
@@ -50,6 +54,14 @@ td{padding:12px 8px;border-bottom:1px solid var(--line)}td a{color:#fff;text-dec
 @media (max-width:560px){h1{font-size:20px}.strip{gap:4px 14px}}
 """
 
+SCRIPT = (
+    "<script>document.querySelectorAll('.packet[data-pl]').forEach(function(card){"
+    "function flip(){card.classList.toggle('show-pl');}"
+    "card.addEventListener('click',function(e){if(e.target.closest('a')||String(window.getSelection()))return;flip();});"
+    "card.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target===card){e.preventDefault();flip();}});"
+    "});</script>"
+)
+
 LEVELS = {"Beginner": 1, "Intermediate": 2, "Hard": 3}
 
 
@@ -61,32 +73,49 @@ def page(title: str, subtitle: str, strip: str, body: str) -> str:
         f"<title>{escape(title)}</title><style>{STYLE}</style></head><body>"
         f"<header><div class=\"wrap\"><div class=\"top\">{ORBIT_MARK}<div><h1>{escape(title)}</h1>"
         f"<p class=\"sub\">{escape(subtitle)}</p></div></div>{strip}</div></header>"
-        f"<main>{body}</main></body></html>"
+        f"<main>{body}</main>{SCRIPT}</body></html>"
     )
 
 
-def packet(item, number: int) -> str:
-    label = f"{'Research' if item.kind == 'paper' else 'Field news'} {number:02d}"
+def block(item, number: int, polish: bool) -> str:
+    data = item.pl if polish else {}
+    if polish:
+        label = f"{data['kind']} {number:02d}"
+        hint = "kliknij, aby zobaczyć po angielsku"
+        title, lines, why, difficulty = data["title"], data["summary"], data["why"], data["difficulty"]
+        why_label = "Dlaczego to ważne"
+    else:
+        label = f"{'Research' if item.kind == 'paper' else 'Field news'} {number:02d}"
+        hint = "click for Polish" if item.pl else ""
+        title, lines, why, difficulty = item.title, item.summary, item.why, item.difficulty
+        why_label = "Why it matters"
     authors = ""
     if item.authors:
         shown = ", ".join(item.authors[:3]) + (" et al." if len(item.authors) > 3 else "")
         authors = f"<span>{escape(shown)}</span>"
     level = LEVELS.get(item.difficulty)
     signal = (
-        f"<span><span class=\"sig s{level}\"><i></i><i></i><i></i></span>{escape(item.difficulty)}</span>"
+        f"<span><span class=\"sig s{level}\"><i></i><i></i><i></i></span>{escape(difficulty)}</span>"
         if level
-        else f"<span>{escape(item.difficulty)}</span>"
+        else f"<span>{escape(difficulty)}</span>"
     )
-    bullets = "".join(f"<li>{escape(line)}</li>" for line in item.summary)
+    bullets = "".join(f"<li>{escape(line)}</li>" for line in lines)
+    note = "<p class=\"note\">Tłumaczenie maszynowe, może zawierać błędy.</p>" if polish else ""
     return (
-        "<article class=\"packet\">"
-        f"<div class=\"tag\">{label}</div>"
-        f"<h3><a href=\"{escape(item.link, quote=True)}\" target=\"_blank\" rel=\"noopener\">{escape(item.title)}</a></h3>"
+        f"<div class=\"{'pl' if polish else 'en'}\">"
+        f"<div class=\"tag\"><span>{label}</span><em>{hint}</em></div>"
+        f"<h3><a href=\"{escape(item.link, quote=True)}\" target=\"_blank\" rel=\"noopener\">{escape(title)}</a></h3>"
         f"<div class=\"meta\"><span>{escape(item.source)}</span>{authors}{signal}</div>"
         f"<ul>{bullets}</ul>"
-        f"<p class=\"why\"><b>Why it matters</b>{escape(item.why)}</p>"
-        "</article>"
+        f"<p class=\"why\"><b>{why_label}</b>{escape(why)}</p>{note}"
+        "</div>"
     )
+
+
+def packet(item, number: int) -> str:
+    attrs = " data-pl tabindex=\"0\"" if item.pl else ""
+    polish = block(item, number, True) if item.pl else ""
+    return f"<article class=\"packet\"{attrs}>{block(item, number, False)}{polish}</article>"
 
 
 def section(heading: str, items: list, empty: str) -> str:

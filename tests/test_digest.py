@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from orbit_digest import llm, render
+from orbit_digest import llm, render, translate
 from orbit_digest.main import run
 from orbit_digest.models import Item
 from orbit_digest.rank import score_item, select
@@ -93,7 +93,7 @@ def test_extractive_summary_has_two_sentences_in_order():
 
 
 def test_run_respects_item_limits(tmp_path):
-    result = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, papers=0, news=0)
+    result = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, papers=0, news=0, translator=False)
     assert result["papers"] == 0 and result["news"] == 0
 
 
@@ -112,11 +112,11 @@ def test_render_escapes_markup():
 
 
 def test_run_writes_digest_and_never_repeats(tmp_path):
-    first = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher)
+    first = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, translator=False)
     assert first["papers"] == 1 and first["news"] == 1
     assert len(first["errors"]) == 4
     assert (tmp_path / "2026-10-29.html").exists() and (tmp_path / "index.html").exists()
-    second = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher)
+    second = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, translator=False)
     assert second["papers"] == 0 and second["news"] == 0
     state = json.loads((tmp_path / "state.json").read_text())
     assert len(state["seen"]) == 2
@@ -128,3 +128,33 @@ def test_llm_output_is_validated():
     bad = lambda *a, **k: {"choices": [{"message": {"content": "no json here"}}]}
     assert llm.enhance(item, good)["summary"] == ["a", "b", "c"]
     assert llm.enhance(item, bad) is None
+
+
+def test_polish_uses_templates_for_why_and_translator_for_text():
+    item = Item(id="1", kind="paper", title="Rover", link="l", text="x", source="s", published=NOW,
+                summary=["One.", "Two."], difficulty="Hard")
+    item.why = "Useful background on how robots sense, plan and act in the real world."
+    assert translate.add_polish(item, lambda text: f"PL:{text}")
+    assert item.pl["title"] == "PL:Rover"
+    assert item.pl["summary"] == ["PL:One.", "PL:Two."]
+    assert item.pl["why"].startswith("Przydatne tło")
+    assert item.pl["difficulty"] == "Trudny"
+
+
+def test_polish_is_skipped_when_translation_fails():
+    item = Item(id="1", kind="news", title="t", link="l", text="x", source="s", published=NOW,
+                summary=["One."], why="custom", difficulty="Easy read")
+    assert translate.add_polish(item, lambda text: None) is False
+    assert item.pl == {}
+
+
+def test_render_adds_click_to_switch_only_with_polish():
+    base = dict(id="1", kind="paper", title="Title", link="https://x.test", text="", source="arXiv",
+                published=NOW, summary=["Line."], why="Why.", difficulty="Beginner")
+    plain = render.packet(Item(**base), 1)
+    assert "data-pl" not in plain and "click for Polish" not in plain
+    item = Item(**base)
+    item.pl = {"title": "Tytuł <b>", "summary": ["Linia."], "why": "Dlaczego.", "difficulty": "Początkujący", "kind": "Praca"}
+    html = render.packet(item, 1)
+    assert "data-pl" in html and "click for Polish" in html
+    assert "Tytuł &lt;b&gt;" in html and "Tłumaczenie maszynowe" in html

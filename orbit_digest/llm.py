@@ -44,3 +44,23 @@ def enhance(item, poster=post) -> Optional[dict]:
     if not isinstance(data, dict) or not isinstance(data.get("summary"), list) or not data["summary"]:
         return None
     return data
+
+
+def translate_text(text: str, poster=post) -> Optional[str]:
+    base = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+    headers = {"Content-Type": "application/json"}
+    if os.getenv("LLM_API_KEY"):
+        headers["Authorization"] = f"Bearer {os.environ['LLM_API_KEY']}"
+    payload = {
+        "model": os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": "Translate the user's text from English to natural Polish. Keep technical terms accurate. Return only the translation."},
+            {"role": "user", "content": text},
+        ],
+    }
+    try:
+        result = poster(f"{base}/chat/completions", payload, headers)["choices"][0]["message"]["content"].strip()
+    except (OSError, KeyError, IndexError, ValueError):
+        return None
+    return result or None

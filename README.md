@@ -16,6 +16,12 @@ Then open `digest/index.html`. Each day gets its own page and the script remembe
 
 It only uses the Python standard library (3.9 or newer).
 
+## Polish version
+
+Click a card to switch it to Polish and click again to go back. The "why it matters" line and the difficulty tag come from built-in Polish texts. The title and summary are translated with the free MyMemory service, so those sentences are sent to it. If you set the LLM variables below, the LLM translates instead. Use `--no-translate` to turn this off.
+
+Translations are machine-made and can sound odd, so every Polish card says so.
+
 ## Run it every evening
 
 On Linux or macOS add a cron line, for example:

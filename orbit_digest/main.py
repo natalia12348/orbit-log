@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import llm, render
+from . import llm, render, translate
 from .rank import select
 from .sources import FEEDS, collect, fetch
 from .summarise import SUMMARY_SENTENCES, apply_summary
@@ -51,7 +51,7 @@ def build_index(out: Path, state: dict) -> None:
     (out / "index.html").write_text(render.render_index(entries), encoding="utf-8")
 
 
-def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, papers: int = 2, news: int = 3) -> dict:
+def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, papers: int = 2, news: int = 3, translator=None) -> dict:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     now = now or datetime.now(timezone.utc)
@@ -62,6 +62,8 @@ def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, pap
     used_llm = 0
     for item in papers + news:
         used_llm += improve(item, use_llm, poster)
+        if translator is not False:
+            translate.add_polish(item, translator or translate.default_translator())
     engine = "AI-assisted" if used_llm else "rule-based"
     key = local.strftime("%Y-%m-%d")
     entry = len({*state["days"], key})
@@ -78,10 +80,12 @@ def cli() -> None:
     parser = argparse.ArgumentParser(description="Build today's space, robotics and AI digest.")
     parser.add_argument("--out", default=os.getenv("ORBIT_OUT", "digest"))
     parser.add_argument("--no-llm", action="store_true")
+    parser.add_argument("--no-translate", action="store_true")
     parser.add_argument("--papers", type=int, default=2)
     parser.add_argument("--news", type=int, default=3)
     args = parser.parse_args()
-    result = run(args.out, use_llm=not args.no_llm, papers=args.papers, news=args.news)
+    result = run(args.out, use_llm=not args.no_llm, papers=args.papers, news=args.news,
+                 translator=False if args.no_translate else None)
     print(f"{result['path']}  papers={result['papers']} news={result['news']}")
     for error in result["errors"]:
         print(f"warning: {error}")
