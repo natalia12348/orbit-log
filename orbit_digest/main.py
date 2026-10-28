@@ -8,7 +8,7 @@ from pathlib import Path
 from . import llm, render
 from .rank import select
 from .sources import FEEDS, collect, fetch
-from .summarise import apply_summary
+from .summarise import SUMMARY_SENTENCES, apply_summary
 
 SEEN_LIMIT = 3000
 DAY_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.html$")
@@ -34,7 +34,7 @@ def improve(item, use_llm: bool, poster=None) -> bool:
     data = llm.enhance(item, poster) if poster else llm.enhance(item)
     if not data:
         return False
-    item.summary = [str(line) for line in data["summary"]][:3]
+    item.summary = [str(line) for line in data["summary"]][:SUMMARY_SENTENCES]
     item.why = str(data.get("why") or item.why)
     item.difficulty = str(data.get("difficulty") or item.difficulty)
     return True
@@ -51,14 +51,14 @@ def build_index(out: Path, state: dict) -> None:
     (out / "index.html").write_text(render.render_index(entries), encoding="utf-8")
 
 
-def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None) -> dict:
+def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, papers: int = 2, news: int = 3) -> dict:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     now = now or datetime.now(timezone.utc)
     local = now.astimezone()
     state = load_state(out)
     items, errors = collect(fetcher)
-    papers, news = select(items, set(state["seen"]), now=now)
+    papers, news = select(items, set(state["seen"]), now=now, papers=papers, news=news)
     used_llm = 0
     for item in papers + news:
         used_llm += improve(item, use_llm, poster)
@@ -78,8 +78,10 @@ def cli() -> None:
     parser = argparse.ArgumentParser(description="Build today's space, robotics and AI digest.")
     parser.add_argument("--out", default=os.getenv("ORBIT_OUT", "digest"))
     parser.add_argument("--no-llm", action="store_true")
+    parser.add_argument("--papers", type=int, default=2)
+    parser.add_argument("--news", type=int, default=3)
     args = parser.parse_args()
-    result = run(args.out, use_llm=not args.no_llm)
+    result = run(args.out, use_llm=not args.no_llm, papers=args.papers, news=args.news)
     print(f"{result['path']}  papers={result['papers']} news={result['news']}")
     for error in result["errors"]:
         print(f"warning: {error}")

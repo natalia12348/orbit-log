@@ -2,13 +2,15 @@
 
 A small script that builds a daily page with new papers and news about space robotics and AI.
 
-It pulls recent papers from arXiv and stories from a few public RSS feeds, ranks them by keywords, and writes a three-sentence summary for each one with a "why it matters" line and a difficulty tag. Everything runs without an API key. If you want better summaries you can plug in an LLM (see below).
+It pulls recent papers from arXiv and stories from a few public RSS feeds, ranks them by keywords, and writes a two-sentence summary for each one with a "why it matters" line and a difficulty tag. Everything runs without an API key. If you want better summaries you can plug in an LLM (see below).
 
 ## Run it
 
 ```bash
 python3 digest.py --out ./digest
 ```
+
+By default it shows 2 papers and 3 news stories a day. Change that with `--papers` and `--news`.
 
 Then open `digest/index.html`. Each day gets its own page and the script remembers what it already showed, so you never see the same item twice.
 

@@ -85,11 +85,16 @@ def test_select_skips_seen_and_old_items():
     assert papers == []
 
 
-def test_extractive_summary_has_three_sentences_in_order():
+def test_extractive_summary_has_two_sentences_in_order():
     text = parse_arxiv(ARXIV.encode())[0].text
     summary = extractive_summary(text)
-    assert len(summary) == 3
-    assert text.index(summary[0]) < text.index(summary[1]) < text.index(summary[2])
+    assert len(summary) == 2
+    assert text.index(summary[0]) < text.index(summary[1])
+
+
+def test_run_respects_item_limits(tmp_path):
+    result = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, papers=0, news=0)
+    assert result["papers"] == 0 and result["news"] == 0
 
 
 def test_difficulty_and_relevance_text():

@@ -2,6 +2,7 @@ import re
 
 from .rank import PATTERNS
 
+SUMMARY_SENTENCES = 2
 SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"(])")
 CUES = re.compile(
     r"\b(we propose|we present|we show|we introduce|we demonstrate|this paper|this article|"
@@ -44,7 +45,7 @@ def keyword_score(sentence: str) -> int:
     return sum(w for patterns in PATTERNS.values() for p, w in patterns if p.search(lowered))
 
 
-def extractive_summary(text: str, count: int = 3) -> list:
+def extractive_summary(text: str, count: int = SUMMARY_SENTENCES) -> list:
     sentences = split_sentences(text)
     if len(sentences) <= count:
         return [trim(s) for s in sentences]

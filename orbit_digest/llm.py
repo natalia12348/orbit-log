@@ -6,7 +6,7 @@ from typing import Optional
 
 PROMPT = (
     "You write a daily digest for a junior who wants to work in space robotics and AI. "
-    "Return ONLY JSON with keys: \"summary\" (list of exactly 3 short plain-English sentences), "
+    "Return ONLY JSON with keys: \"summary\" (list of exactly 2 short plain-English sentences), "
     "\"why\" (one sentence on why it matters for that career), "
     "\"difficulty\" (Beginner, Intermediate or Hard for a paper; Easy read for news)."
 )
