@@ -51,12 +51,17 @@ def build_index(out: Path, state: dict) -> None:
     (out / "index.html").write_text(render.render_index(entries), encoding="utf-8")
 
 
-def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, papers: int = 2, news: int = 3, translator=None) -> dict:
+def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, papers: int = 2, news: int = 3, translator=None, force: bool = False) -> dict:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     now = now or datetime.now(timezone.utc)
     local = now.astimezone()
     state = load_state(out)
+    key = local.strftime("%Y-%m-%d")
+    done = out / f"{key}.html"
+    if key in state["days"] and done.exists() and not force:
+        counts = state["days"][key]
+        return {"path": done, "papers": counts["papers"], "news": counts["news"], "errors": [], "skipped": True}
     items, errors = collect(fetcher)
     papers, news = select(items, set(state["seen"]), now=now, papers=papers, news=news)
     used_llm = 0
@@ -65,7 +70,6 @@ def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, pap
         if translator is not False:
             translate.add_polish(item, translator or translate.default_translator())
     engine = "AI-assisted" if used_llm else "rule-based"
-    key = local.strftime("%Y-%m-%d")
     entry = len({*state["days"], key})
     html = render.render_day(local.strftime("%A %d %B %Y"), entry, papers, news, engine, errors, len(FEEDS) + 1)
     (out / f"{key}.html").write_text(html, encoding="utf-8")
@@ -73,7 +77,7 @@ def run(out_dir, now=None, use_llm: bool = True, fetcher=fetch, poster=None, pap
     state["days"][key] = {"papers": len(papers), "news": len(news)}
     save_state(out, state)
     build_index(out, state)
-    return {"path": out / f"{key}.html", "papers": len(papers), "news": len(news), "errors": errors}
+    return {"path": done, "papers": len(papers), "news": len(news), "errors": errors, "skipped": False}
 
 
 def cli() -> None:
@@ -81,11 +85,13 @@ def cli() -> None:
     parser.add_argument("--out", default=os.getenv("ORBIT_OUT", "digest"))
     parser.add_argument("--no-llm", action="store_true")
     parser.add_argument("--no-translate", action="store_true")
+    parser.add_argument("--force", action="store_true")
     parser.add_argument("--papers", type=int, default=2)
     parser.add_argument("--news", type=int, default=3)
     args = parser.parse_args()
     result = run(args.out, use_llm=not args.no_llm, papers=args.papers, news=args.news,
-                 translator=False if args.no_translate else None)
-    print(f"{result['path']}  papers={result['papers']} news={result['news']}")
+                 translator=False if args.no_translate else None, force=args.force)
+    note = " (already built today, use --force to rebuild)" if result["skipped"] else ""
+    print(f"{result['path']}  papers={result['papers']} news={result['news']}{note}")
     for error in result["errors"]:
         print(f"warning: {error}")

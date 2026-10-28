@@ -116,7 +116,7 @@ def test_run_writes_digest_and_never_repeats(tmp_path):
     assert first["papers"] == 1 and first["news"] == 1
     assert len(first["errors"]) == 4
     assert (tmp_path / "2026-10-29.html").exists() and (tmp_path / "index.html").exists()
-    second = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, translator=False)
+    second = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, translator=False, force=True)
     assert second["papers"] == 0 and second["news"] == 0
     state = json.loads((tmp_path / "state.json").read_text())
     assert len(state["seen"]) == 2
@@ -158,3 +158,11 @@ def test_render_adds_click_to_switch_only_with_polish():
     html = render.packet(item, 1)
     assert "data-pl" in html and "click for Polish" in html
     assert "Tytuł &lt;b&gt;" in html and "Tłumaczenie maszynowe" in html
+
+
+def test_second_run_on_the_same_day_keeps_the_page(tmp_path):
+    first = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, translator=False)
+    before = first["path"].read_text(encoding="utf-8")
+    again = run(tmp_path, now=NOW, use_llm=False, fetcher=fake_fetcher, translator=False)
+    assert again["skipped"] and again["papers"] == 1
+    assert first["path"].read_text(encoding="utf-8") == before

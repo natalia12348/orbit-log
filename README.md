@@ -12,7 +12,7 @@ python3 digest.py --out ./digest
 
 By default it shows 2 papers and 3 news stories a day. Change that with `--papers` and `--news`.
 
-Then open `digest/index.html`. Each day gets its own page and the script remembers what it already showed, so you never see the same item twice.
+Then open `digest/index.html`. Each day gets its own page and the script remembers what it already showed, so you never see the same item twice. Running it again on the same day does nothing unless you add `--force`.
 
 It only uses the Python standard library (3.9 or newer).
 
